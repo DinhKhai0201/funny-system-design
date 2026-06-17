@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🎓 System Design Vui Vẻ - Từ Zero đến Hero</title>
+  <link rel="stylesheet" href="assets/style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap"
+    rel="stylesheet">
+</head>
+
+<body>
+
+  <!-- TOP NAV -->
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <span class="logo">🎓</span>
+        <div>
+          <div class="brand-title">System Design Vui Vẻ</div>
+          <div class="brand-sub">Từ Zero đến Hero - 300 trang giải trí 🍿</div>
+        </div>
+      </div>
+      <div class="top-actions">
+        <input type="text" id="searchBox" placeholder="🔍 Tìm kiếm chương..." />
+        <button id="themeToggle" title="Đổi giao diện">🌙</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="layout">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar" id="sidebar">
+      <div class="progress-wrap">
+        <div class="progress-label">Tiến độ học 📚</div>
+        <div class="progress-bar">
+          <div id="progressFill"></div>
+        </div>
+        <div class="progress-text"><span id="progressText">0 / 0</span> chương</div>
+      </div>
+      <nav id="navList"></nav>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="content">
+      <article id="chapterContainer">
+        <div class="loading">Đang tải nội dung... ⏳</div>
+      </article>
+
+      <!-- PAGINATION -->
+      <div class="pagination">
+        <button id="prevBtn">⬅️ Chương trước</button>
+        <div id="pageInfo" class="page-info">Chương 1 / 30</div>
+        <button id="nextBtn">Chương kế ➡️</button>
+      </div>
+
+      <footer class="footer">
+        <p>💡 Học System Design giống như xây Lego: bắt đầu từ những khối nhỏ, kiên trì rồi sẽ ra Death Star! 🚀</p>
+        <p>Made with ❤️ + ☕ + 🎵 | © 2026 System Design Vui Vẻ</p>
+      </footer>
+    </main>
+  </div>
+
+  <button id="mobileMenu" class="mobile-menu">☰</button>
+
+  <!-- Load các phần chương theo đúng thứ tự 1 → 4 -->
+  <script src="assets/chapters.js"></script> <!-- Phần 1: chương 1-7  -->
+  <script src="assets/chapters-extra.js"></script> <!-- Phần 2: chương 8-15 -->
+  <script src="assets/chapters-extra2.js"></script> <!-- Phần 3: chương 16-23 -->
+  <script src="assets/chapters-cases.js"></script> <!-- Phần 4: chương 24-30 -->
+  <script src="assets/app.js"></script>
+</body>
+
+</html>
