@@ -37,7 +37,13 @@ docs/
     ├── chapters.js          # Chương 1-7
     ├── chapters-extra.js    # Chương 8-15
     ├── chapters-extra2.js   # Chương 16-23
-    └── chapters-cases.js    # Chương 24-30
+    ├── case-shorturl.js     # Chương 24
+    ├── case-twitter.js      # Chương 25
+    ├── case-facebook.js     # Chương 26
+    ├── case-netflix.js      # Chương 27
+    ├── case-uber.js         # Chương 28
+    ├── case-whatsapp.js     # Chương 29
+    └── case-instayoutube.js # Chương 30
 ```
 
 ## 🎯 Nội dung 30 chương

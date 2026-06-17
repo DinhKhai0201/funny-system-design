@@ -32,10 +32,15 @@ window.CHAPTERS.push({
 <li>230M subscribers, peak 60M concurrent.</li>
 <li>Video start &lt; 2s (key UX metric).</li>
 <li>0 buffer during playback (rebuffer rate target &lt; 0.5%).</li>
-<li>99.99% availability.</li>
-<li>Global - latency thấp mọi nơi.</li>
-<li>Cost-optimized (video bandwidth cực đắt).</li>
+<li>99.99% availability.<ul>
+  <li>Chỉ lưu trữ danh mục, recommendation, user profile.</li>
+  <li>Không lưu video! Control plane chạy 100% trên AWS.</li>
 </ul>
+
+<div class="callout tip">
+<div class="callout-title">🤔 Tại sao Data Plane không dùng AWS S3 + CloudFront?</div>
+<p>Ban đầu Netflix có dùng! Nhưng khi traffic đạt mức chiếm 15% <strong>toàn bộ băng thông Internet thế giới</strong>, chi phí egress AWS (phí tải data ra ngoài) trở nên quá đắt. Hơn nữa, AWS không thể đặt server bên trong ISP (như Viettel, FPT) được. Bằng cách tự build Open Connect Appliances (OCA) và đặt <strong>ngay trong tủ rack của ISP</strong>, Netflix tiết kiệm hàng tỷ đô la băng thông và mang video sát người dùng nhất có thể.</p>
+</div>
 
 <h2>📊 Bước 2: Capacity</h2>
 

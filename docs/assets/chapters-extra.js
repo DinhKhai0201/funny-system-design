@@ -94,6 +94,40 @@ const _PART2 = [
 <p>"Scale up đến khi không nổi nữa, rồi mới scale out". Đừng phức tạp hoá ngay từ đầu - YAGNI (You Aren't Gonna Need It).</p>
 </div>
 
+<h2>💻 Stateless vs Stateful Server</h2>
+<p>Đây là khái niệm <strong>quyết định</strong> bạn scale dễ hay khó:</p>
+<table>
+  <tr><th></th><th>Stateful</th><th>Stateless ⭐</th></tr>
+  <tr><td>Session lưu ở</td><td>Trong RAM server</td><td>Redis / DB shared</td></tr>
+  <tr><td>Scale</td><td>Khó — user phải về đúng server cũ</td><td>Dễ — request vào server nào cũng được</td></tr>
+  <tr><td>LB</td><td>Cần sticky session</td><td>Round robin đơn giản</td></tr>
+  <tr><td>Server chết</td><td>User mất session, phải login lại</td><td>Không ảnh hưởng</td></tr>
+</table>
+
+<div class="callout warn">
+<div class="callout-title">⚠️ Quy tắc vàng</div>
+<p><strong>Luôn làm server stateless</strong>. Lưu session/state vào Redis hoặc DB. Đây là điều kiện tiên quyết để horizontal scaling hoạt động.</p>
+</div>
+
+<h2>🗄️ Database Bottleneck — Thường là nơi chết đầu tiên</h2>
+<p>Bạn thêm 10 web server dễ dàng, nhưng DB vẫn chỉ có 1. Đây là các giải pháp theo thứ tự:</p>
+<ol>
+  <li><strong>Connection pooling</strong>: Mỗi server giữ sẵn 20 connection đến DB thay vì mở/đóng liên tục.</li>
+  <li><strong>Read replicas</strong>: Tách đọc/ghi. Write vào master, read từ replica. 80% query là read.</li>
+  <li><strong>Cache layer</strong>: Redis đứng trước DB, chặn 90%+ read traffic.</li>
+  <li><strong>Sharding</strong>: Chia DB thành nhiều phần — học kỹ ở Chương 9.</li>
+</ol>
+
+<h2>💰 Cost: Vertical vs Horizontal</h2>
+<table>
+  <tr><th></th><th>Vertical (máy mạnh)</th><th>Horizontal (nhiều máy)</th></tr>
+  <tr><td>16 CPU, 64GB</td><td>~$500/tháng</td><td>—</td></tr>
+  <tr><td>64 CPU, 512GB</td><td>~$4,000/tháng</td><td>—</td></tr>
+  <tr><td>256 CPU, 2TB</td><td>~$20,000/tháng</td><td>—</td></tr>
+  <tr><td>10× (16 CPU, 64GB)</td><td>—</td><td>~$5,000/tháng ⭐</td></tr>
+</table>
+<p>Chi phí vertical tăng <strong>cấp số nhân</strong>. Horizontal tăng <strong>tuyến tính</strong>. Từ 64 CPU trở lên, horizontal luôn rẻ hơn nhiều.</p>
+
 <h2>🤖 Auto-scaling</h2>
 <p>Cloud (AWS, GCP) cho phép tự thêm/bớt server theo metric:</p>
 <pre><code># AWS Auto Scaling rule
@@ -198,6 +232,28 @@ async function getUser(userId) {
   const db = getShardForUser(userId);
   return await db.query('SELECT * FROM users WHERE id=?', userId);
 }</code></pre>
+
+<h2>⚠️ Thách thức khi Sharding</h2>
+
+<h3>1. Cross-shard query</h3>
+<p>User ở shard A, orders ở shard B. Muốn JOIN? <strong>Không làm được</strong> trực tiếp. Giải pháp:</p>
+<ul>
+  <li>Denormalize: copy data cần JOIN vào cùng shard.</li>
+  <li>Application-level join: query 2 shard rồi merge trong code.</li>
+  <li>Shard theo entity chính: nếu hay query user + orders → shard cả 2 theo user_id.</li>
+</ul>
+
+<h3>2. Resharding — "Cắt lại bánh"</h3>
+<p>Bạn có 4 shard, cần 8. <code>hash % 4</code> thành <code>hash % 8</code> → gần như tất cả data phải dời. Giải pháp:</p>
+<ul>
+  <li><strong>Consistent Hashing</strong> (Chương 16): chỉ 1/N data di chuyển.</li>
+  <li><strong>Virtual shards</strong>: tạo 256 logical shard từ đầu, map vào 4 physical. Thêm máy = remap logical shard.</li>
+</ul>
+
+<div class="callout fun">
+<div class="callout-title">🍕 Nhớ luôn</div>
+<p>Shard key chọn sai = chết. Ví dụ: shard theo <code>country</code> → shard "US" gấp 100 lần shard "Laos". Nên shard theo <code>user_id</code> (phân bố đều).</p>
+</div>
 `
   },
 
@@ -263,9 +319,57 @@ async function getUser(userId) {
 <h2>💡 Eventually Consistent</h2>
 <p>Bạn like 1 post → backend trả "thành công" ngay, nhưng số like trên feed bạn bè khác có thể update chậm 1-2 giây. Đó là "eventual consistency".</p>
 
+<h2>🎯 Scenario cụ thể: Khi mạng bị chia cắt</h2>
+<p>Tưởng tượng 2 node DB mất kết nối với nhau (network partition):</p>
+<pre><code>Node A (VN)  ×××××  Node B (US)
+   │                    │
+   │ User gửi           │ User đọc
+   │ UPDATE balance=50  │ SELECT balance → 100? hay 50?
+
+CP (chọn Consistency):
+  Node B từ chối phục vụ → trả Error 503
+  → User US bực mình nhưng data không sai
+
+AP (chọn Availability):
+  Node B trả balance = 100 (data cũ)
+  → User US vui vẻ nhưng thấy số sai
+  → Khi mạng khôi phục, 2 node sync lại</code></pre>
+
+<h2>🌍 PACELC — Mở rộng CAP cho thực tế</h2>
+<p>CAP chỉ nói khi có Partition. Nhưng 99.9% thời gian mạng <strong>bình thường</strong>. PACELC hỏi thêm:</p>
+<p><em>"Khi không có Partition (Else), chọn Latency hay Consistency?"</em></p>
+<table>
+  <tr><th>Hệ thống</th><th>Khi Partition</th><th>Bình thường (Else)</th></tr>
+  <tr><td>Cassandra</td><td>AP</td><td>EL (Latency) — nhanh nhưng eventual</td></tr>
+  <tr><td>HBase</td><td>CP</td><td>EC (Consistency) — chậm nhưng chính xác</td></tr>
+  <tr><td>MongoDB</td><td>CP (default)</td><td>EC</td></tr>
+</table>
+
+<h2>🏚️ Tunable Consistency — Cassandra magic</h2>
+<p>Cassandra cho bạn <strong>tự chỉnh</strong> mức consistency mỗi query:</p>
+<pre><code>N = 3 replicas
+W = số node phải confirm WRITE
+R = số node phải confirm READ
+
+Nếu W + R > N → Strong consistency
+  Ví dụ: W=2, R=2, N=3 → 2+2=4 > 3 → đảm bảo đọc được data mới nhất
+
+Nếu W + R ≤ N → Eventual consistency
+  Ví dụ: W=1, R=1, N=3 → nhanh nhưng có thể đọc data cũ</code></pre>
+
 <div class="callout tip">
 <div class="callout-title">💡 Bài học</div>
-<p>Không có DB "tốt nhất". Chọn DB phù hợp với use case: tài chính → CP, social → AP.</p>
+<p>Không có DB "tốt nhất". Chọn DB phù hợp với use case: tài chính → CP, social → AP, mixed → tunable consistency.</p>
+</div>
+
+<h2>🧠 Quiz</h2>
+<div class="quiz">
+<div class="quiz-question">Bạn xây hệ thống chuyển tiền. Mạng giữa 2 datacenter bị đứt. Nên chọn?</div>
+<div class="quiz-options">
+  <div class="quiz-option" data-correct="true">CP — thà báo lỗi còn hơn chuyển sai tiền</div>
+  <div class="quiz-option" data-correct="false">AP — luôn trả lời, chấp nhận số dư lệch</div>
+  <div class="quiz-option" data-correct="false">CA — cả hai luôn</div>
+</div>
 </div>
 `
   },
@@ -380,6 +484,33 @@ await consumer.run({
 <div class="callout-title">⚠️ Cẩn thận</div>
 <p>Message có thể bị xử lý <strong>2 lần</strong> (at-least-once). Code consumer phải <strong>idempotent</strong>: chạy nhiều lần kết quả vẫn vậy.</p>
 </div>
+
+<h2>🎯 Delivery Semantics — Quan trọng mà hay bị bỏ qua</h2>
+<table>
+  <tr><th>Semantic</th><th>Ý nghĩa</th><th>Dùng khi</th></tr>
+  <tr><td>At-most-once</td><td>Gửi 1 lần, mất thì thôi</td><td>Metrics, logging (mất 1-2 log OK)</td></tr>
+  <tr><td>At-least-once ⭐</td><td>Gửi lại nếu chưa ACK — có thể trùng</td><td>Email, notification (gửi 2 lần còn hơn không gửi)</td></tr>
+  <tr><td>Exactly-once</td><td>Chính xác 1 lần (khó + đắt)</td><td>Payment (không được trừ tiền 2 lần)</td></tr>
+</table>
+
+<div class="callout fun">
+<div class="callout-title">📦 Exactly-once là ảo?</div>
+<p>Thực ra exactly-once <strong>thuần túy không tồn tại</strong> trong distributed system. Kafka "exactly-once" thực chất là at-least-once + <strong>idempotent producer</strong> + <strong>transactional consumer</strong>. Vẫn cần code consumer idempotent!</p>
+</div>
+
+<h3>💀 Dead Letter Queue (DLQ)</h3>
+<p>Message xử lý lỗi 3 lần → chuyển vào "hộp thư chết". Không mất message, team sẽ review sau.</p>
+<pre><code>queue.subscribe('orders', async (msg) => {
+  try {
+    await processOrder(msg);
+  } catch (err) {
+    if (msg.retryCount >= 3) {
+      await dlq.publish('orders-dlq', msg); // chuyển DLQ
+    } else {
+      await queue.retry(msg, { delay: 5000 }); // thử lại sau 5s
+    }
+  }
+});</code></pre>
 `
   },
 
@@ -686,6 +817,33 @@ Cache-Control: immutable        # File không bao giờ đổi (file có hash)</
 <p>"Microservice premature" còn tệ hơn monolith. Netflix, Amazon đều bắt đầu monolith rồi mới tách. Đừng overengineer!</p>
 </div>
 
+<h2>🦠 Strangler Fig Pattern — Cách tách monolith không đau</h2>
+<p>Không ai viết lại từ đầu. Thay vào đó, <strong>dần dần bọc lớp</strong> như cây đa bóp chết cây chủ:</p>
+<ol>
+  <li>Tính năng mới → viết microservice riêng.</li>
+  <li>Route traffic tính năng cũ qua proxy → dần chuyển sang microservice.</li>
+  <li>Khi module cũ không còn traffic → xóa khỏi monolith.</li>
+  <li>Lặp lại cho module tiếp theo.</li>
+</ol>
+<pre><code>// API Gateway routing:
+"/users/*"  → User Microservice (mới)
+"/orders/*" → Monolith (chưa tách)
+"/pay/*"    → Payment Service (mới)
+// Dần dần monolith nhỏ lại...</code></pre>
+
+<h2>🗃️ Database per Service — Hệ quả</h2>
+<p>Mỗi service có DB riêng nghe hay, nhưng gây ra vấn đề mới:</p>
+<ul>
+  <li><strong>JOIN không được</strong>: User DB + Order DB → phải gọi API giữa service.</li>
+  <li><strong>Distributed transaction</strong>: Muốn ACID giữa 2 DB? Dùng <strong>Saga pattern</strong> (chuỗi bước + compensate khi lỗi).</li>
+  <li><strong>Data duplication</strong>: Order Service cần user name? Copy vào Order DB (denormalize), sync qua events.</li>
+</ul>
+
+<div class="callout fun">
+<div class="callout-title">💡 Thực tế</div>
+<p>Amazon có hơn <strong>1000 microservice</strong> phục vụ amazon.com. Mỗi lần bạn vào trang sản phẩm, 100-300 service được gọi để render 1 trang. Đó là lý do họ cần X-Ray tracing và circuit breaker khắp nơi.</p>
+</div>
+
 <h2>🎮 Service Discovery</h2>
 <p>Với 100 service và auto-scale, làm sao biết service X ở IP nào?</p>
 <ul>
@@ -809,6 +967,37 @@ events = [
 <div class="callout fun">
 <div class="callout-title">😎 Real-world</div>
 <p>Uber dùng event-driven mạnh. "Trip Requested" → matchmaking → driver service → payment service → notification, tất cả qua events.</p>
+</div>
+
+<h2>📤 Outbox Pattern — "Gửi event không mất"</h2>
+<p>Vấn đề: bạn ghi DB xong, publish event lên Kafka. Nếu Kafka chết ngay lúc đó? DB có data nhưng event mất!</p>
+<pre><code>// ❌ Không an toàn:
+await db.insert(order);          // ✅ thành công
+await kafka.publish('OrderCreated', order);  // ❌ Kafka chết → event mất!
+
+// ✅ Outbox pattern:
+await db.transaction(async (tx) => {
+  await tx.insert('orders', order);
+  await tx.insert('outbox', {      // ghi event vào DB cùng transaction
+    topic: 'OrderCreated',
+    payload: JSON.stringify(order)
+  });
+});
+
+// Worker riêng poll outbox table → publish lên Kafka → xóa khỏi outbox
+// Hoặc dùng CDC (Change Data Capture): Debezium đọc binlog → Kafka</code></pre>
+
+<h2>📦 Event Schema Evolution</h2>
+<p>Event thay đổi theo thời gian. V1 có 3 field, V2 có 5 field. Consumer cũ vẫn phải hiểu:</p>
+<ul>
+  <li><strong>Backward compatible</strong>: field mới phải optional (có default).</li>
+  <li><strong>Đừng xóa field</strong>: deprecated thôi, giữ để consumer cũ không sập.</li>
+  <li><strong>Schema Registry</strong>: dùng Avro + Schema Registry để enforce compatibility.</li>
+</ul>
+
+<div class="callout tip">
+<div class="callout-title">💡 Khi nào KHÔNG dùng Event Sourcing</div>
+<p>Đừng dùng Event Sourcing cho mọi thứ. Nó phức tạp: replay events chậm, schema evolution khó, debugging nightmare. Chỉ dùng khi cần audit trail (tài chính), time-travel debug, hoặc undo/redo.</p>
 </div>
 `
   },

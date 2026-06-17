@@ -228,6 +228,11 @@ function getTimeline(userId) {
 <tr><td>Inactive follower</td><td>Lazy load</td><td>Tiết kiệm storage</td></tr>
 </table>
 
+<div class="callout tip">
+<div class="callout-title">🤔 Tại sao 10K là ngưỡng push/pull?</div>
+<p>Con số 10K không phải tuyệt đối — Twitter thực tế tune liên tục. Logic: nếu A có 10K follower, mỗi tweet cần 10K Redis LPUSH. Với 100 tweet/ngày = 1M write/ngày chỉ cho 1 user → chấp nhận được. Nhưng 10M follower × 100 tweet = <strong>1 tỉ write/ngày</strong> cho 1 người → không được. Vậy nên dùng ngưỡng dựa trên <strong>tổng fan-out cost</strong>, không chỉ số follower.</p>
+</div>
+
 <h2>🌀 Bước 6: Fan-out Worker chi tiết</h2>
 
 <pre><code>// 1. User A post tweet → Tweet Service
@@ -345,6 +350,11 @@ SADD tweet:liked_by:{tweetId} {userId}     -- track unique
 ZADD user:liked_tweets:{userId} {ts} {tweetId}
 
 // Async: sync về DB mỗi 30s (eventually consistent)</code></pre>
+
+<div class="callout tip">
+<div class="callout-title">🤔 Tại sao Redis mà không update trực tiếp DB?</div>
+<p>1 tweet viral có 10M like trong 1 giờ = <strong>2,780 write/s vào 1 row</strong>. SQL lock contention sẽ giết DB. Redis INCR là <strong>O(1) atomic, single-threaded</strong> — xử lý 100K+ INCR/s thoải mái. Rồi async flush về DB mỗi 30 giây, batching 83K like thành 1 UPDATE. Trade-off: nếu Redis crash, mất tối đa 30s like count — chấp nhận được với social app.</p>
+</div>
 
 <h2>📈 Bước 11: Scaling Numbers</h2>
 

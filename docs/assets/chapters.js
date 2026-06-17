@@ -56,6 +56,46 @@ const _PART1 = [
   <li><strong>Tránh "đứt tay":</strong> Code chạy được ≠ chạy ở quy mô lớn được.</li>
 </ul>
 
+<h2>🧠 Quy trình tư duy System Design</h2>
+<p>Trong phỏng vấn hay thực tế, System Design không phải "nghĩ ra đáp án đúng" — mà là <strong>cách bạn tư duy có hệ thống</strong>. Framework 5 bước:</p>
+
+<ol>
+  <li><strong>Clarify Requirements</strong> (5 phút): Hỏi rõ bài toán. "App chat cho 100 người hay 100 triệu người?" — câu trả lời thay đổi toàn bộ thiết kế.</li>
+  <li><strong>Estimation</strong> (5 phút): Ước lượng nhanh QPS, storage, bandwidth. Số liệu quyết định kiến trúc.</li>
+  <li><strong>High-Level Design</strong> (5 phút): Vẽ boxes &amp; arrows — các component chính và cách chúng giao tiếp.</li>
+  <li><strong>Deep Dive</strong> (15 phút): Đào sâu 2-3 component quan trọng nhất (database schema, API, bottleneck).</li>
+  <li><strong>Trade-offs &amp; Discussion</strong> (10 phút): Thảo luận ưu nhược, edge cases, điểm yếu và cách khắc phục.</li>
+</ol>
+
+<div class="callout tip">
+  <div class="callout-title">💡 Bí kíp phỏng vấn</div>
+  <p>Interviewer không tìm "đáp án đúng" — họ tìm <strong>cách bạn suy nghĩ</strong>. Nói rõ giả định, giải thích trade-off, đừng sợ nói "tôi chưa chắc, nhưng approach của tôi sẽ là..."</p>
+</div>
+
+<h2>📐 Functional vs Non-functional Requirements</h2>
+<p>Mỗi hệ thống có 2 loại yêu cầu. Hiểu sai loại nào = thiết kế sai hướng:</p>
+
+<table>
+  <tr><th></th><th>Functional</th><th>Non-functional</th></tr>
+  <tr><td>Là gì?</td><td>Hệ thống <em>làm được gì</em></td><td>Hệ thống <em>hoạt động tốt thế nào</em></td></tr>
+  <tr><td>Ví dụ</td><td>Đăng ký, đăng nhập, post ảnh</td><td>Response &lt; 200ms, uptime 99.9%</td></tr>
+  <tr><td>Ai quan tâm</td><td>Product Manager, User</td><td>Engineer, SRE</td></tr>
+  <tr><td>Sai thì sao</td><td>App thiếu tính năng → user bỏ</td><td>App chậm/sập → user cũng bỏ</td></tr>
+</table>
+
+<h3>4 Non-functional quan trọng nhất</h3>
+<div class="cards">
+  <div class="card"><div class="emoji">⚡</div><h4>Latency</h4><p>Bao lâu để phản hồi? Amazon phát hiện mỗi 100ms chậm thêm = <strong>mất 1% revenue</strong>. P99 = 99% request xong trong X ms.</p></div>
+  <div class="card"><div class="emoji">📊</div><h4>Throughput</h4><p>Bao nhiêu request/giây (QPS)? 100 QPS dùng 1 server. 100K QPS cần cluster + LB + cache. Kiến trúc khác hoàn toàn.</p></div>
+  <div class="card"><div class="emoji">🛡️</div><h4>Availability</h4><p>99.9% uptime = 8.76 giờ down/năm. 99.99% = 52 phút. "Five nines" (99.999%) = 5 phút — cần multi-region, auto-failover.</p></div>
+  <div class="card"><div class="emoji">🔄</div><h4>Consistency</h4><p>Mọi người thấy cùng data? Bank cần 100%. Like count Facebook lệch 1-2 giây? Chấp nhận được.</p></div>
+</div>
+
+<div class="callout fun">
+  <div class="callout-title">🎯 Nhớ nhanh</div>
+  <p>Functional = <em>"Cái gì?"</em>. Non-functional = <em>"Tốt cỡ nào?"</em>. Khi phỏng vấn, luôn hỏi cả 2 trước khi thiết kế.</p>
+</div>
+
 <h2>📖 Ví dụ thực tế</h2>
 <p>Bạn xây app <code>chat</code>. Code chạy ngon trên máy bạn. Bạn deploy lên 1 server. 10 người dùng - ổn. 1 triệu người dùng cùng lúc gửi tin - server <strong>cháy</strong>.</p>
 <pre><code>// Code chạy local: OK
@@ -68,8 +108,46 @@ function sendMessage(msg) {
 // → DB nghẽn, server CPU 100%, message bay mất 😱</code></pre>
 
 <div class="callout tip">
-  <div class="callout-title">💡 Bí kíp</div>
-  <p>Không có hệ thống nào "hoàn hảo". Mọi thiết kế đều là <strong>trade-off</strong> (đánh đổi). Bạn chọn nhanh hay chính xác? Rẻ hay bền? Đơn giản hay linh hoạt?</p>
+  <div class="callout-title">💡 Trade-off — Khái niệm QUAN TRỌNG nhất</div>
+  <p>Không có hệ thống nào "hoàn hảo". Mọi thiết kế đều là <strong>trade-off</strong> (đánh đổi):</p>
+  <ul>
+    <li><strong>Nhanh ↔ Chính xác:</strong> Cache cho tốc độ nhưng data có thể cũ.</li>
+    <li><strong>Đơn giản ↔ Linh hoạt:</strong> Monolith dễ deploy nhưng khó scale từng phần.</li>
+    <li><strong>Rẻ ↔ Bền:</strong> 1 server rẻ nhưng chết là sập. Multi-server đắt nhưng HA.</li>
+    <li><strong>Consistency ↔ Availability:</strong> CAP theorem — ta sẽ học kỹ ở Chương 10.</li>
+  </ul>
+  <p>Senior engineer giỏi = người chọn trade-off <em>phù hợp với context</em>, không phải người biết nhiều tech nhất.</p>
+</div>
+
+<h2>🔢 Back-of-Envelope Estimation — Tính nhẩm kiểu senior</h2>
+<p>Trước khi thiết kế, senior luôn "tính nhẩm" để biết <strong>bài toán ở quy mô nào</strong>. Đây là skill bắt buộc:</p>
+
+<h3>Những con số nên nhớ</h3>
+<table>
+  <tr><th>Đại lượng</th><th>Giá trị gần đúng</th></tr>
+  <tr><td>1 ngày</td><td>~86,400 giây ≈ 10⁵ giây</td></tr>
+  <tr><td>1 tháng</td><td>~2.5 triệu giây ≈ 2.5 × 10⁶</td></tr>
+  <tr><td>1 char (UTF-8 tiếng Việt)</td><td>~3 byte</td></tr>
+  <tr><td>1 ảnh compressed</td><td>~200 KB - 1 MB</td></tr>
+  <tr><td>1 phút video 720p</td><td>~50 MB</td></tr>
+  <tr><td>RAM 1 server</td><td>128 - 512 GB</td></tr>
+  <tr><td>SSD 1 server</td><td>1 - 10 TB</td></tr>
+</table>
+
+<h3>Ví dụ: App chat 10M user</h3>
+<pre><code>DAU = 10M × 20% = 2M user hoạt động/ngày
+Mỗi user gửi 50 tin/ngày → 100M tin/ngày
+QPS = 100M / 86400 ≈ 1,200 tin/giây
+Peak = 3× avg ≈ 3,600 tin/giây
+
+Storage mỗi tin: 200 byte (text + metadata)
+1 ngày: 100M × 200B = 20 GB
+1 năm: 20 GB × 365 = 7.3 TB
+→ Cần database handle TB-scale → 1 server MySQL đủ (nhưng cần replica cho HA)</code></pre>
+
+<div class="callout fun">
+  <div class="callout-title">🤓 Pro tip</div>
+  <p>Đừng cố chính xác 100%. Mục tiêu là biết <strong>bậc độ lớn</strong> (order of magnitude): 1 GB vs 1 TB vs 1 PB quyết định bạn dùng 1 server hay 1000 server. Sai 2× không sao, sai 100× mới chết.</p>
 </div>
 
 <h2>🧠 Quiz nhỏ</h2>
@@ -479,6 +557,45 @@ FROM users u JOIN orders o ON u.id = o.user_id;</code></pre>
   <li><strong>D</strong>urability: Đã commit thì không mất.</li>
 </ul>
 
+<h3>🎭 Isolation Levels — "Gà mổ chọ" đến mức nào?</h3>
+<p>4 mức cách ly giữa các giao dịch, từ lỏng lẻo đến chặt chẽ:</p>
+<table>
+  <tr><th>Level</th><th>Ý nghĩa</th><th>Vấn đề còn xảy ra</th><th>Ví dụ</th></tr>
+  <tr><td>Read Uncommitted</td><td>Đọc cả data chưa commit</td><td>Dirty read, Phantom</td><td>Không ai dùng trong production</td></tr>
+  <tr><td>Read Committed</td><td>Chỉ đọc data đã commit</td><td>Non-repeatable read</td><td>PostgreSQL default ⭐</td></tr>
+  <tr><td>Repeatable Read</td><td>Đọc lại cùng kết quả</td><td>Phantom read</td><td>MySQL InnoDB default</td></tr>
+  <tr><td>Serializable</td><td>Các giao dịch chạy tuần tự</td><td>Không</td><td>Chậm, chỉ dùng khi chuyển tiền</td></tr>
+</table>
+
+<div class="callout fun">
+<div class="callout-title">🍪 Liên tưởng</div>
+<p><strong>Dirty read</strong> = bạn xem trộm bài thi của Thầy nhưng Thầy chưa chấm xong, có thể sửa điểm. <strong>Phantom read</strong> = bạn đếm 10 học sinh trong lớp, quay đi quay lại thành 11 (có đứa mới vào).</p>
+</div>
+
+<h3>🌳 B-Tree vs LSM-Tree — "Ruột" của Database</h3>
+<p>Mọi database đều dùng 1 trong 2 cấu trúc này để lưu index:</p>
+<table>
+  <tr><th></th><th>B-Tree</th><th>LSM-Tree</th></tr>
+  <tr><td>Ai dùng</td><td>MySQL, PostgreSQL</td><td>Cassandra, RocksDB, LevelDB</td></tr>
+  <tr><td>Read</td><td>Nhanh (O(log N) trực tiếp)</td><td>Chậm hơn (có thể check nhiều file)</td></tr>
+  <tr><td>Write</td><td>Chậm (random I/O)</td><td>Nhanh (sequential write)</td></tr>
+  <tr><td>Phù hợp</td><td>Read-heavy, OLTP</td><td>Write-heavy, log, time-series</td></tr>
+</table>
+
+<div class="callout tip">
+<div class="callout-title">💡 Tại sao quan trọng?</div>
+<p>Khi interviewer hỏi "tại sao dùng Cassandra cho write-heavy?" — câu trả lời cốt lõi là <strong>LSM-Tree ghi tuần tự, nhanh gấp 10-100 lần</strong> random write của B-Tree trên disk.</p>
+</div>
+
+<h3>📊 Normalization vs Denormalization</h3>
+<table>
+  <tr><th></th><th>Normalize (tách bảng)</th><th>Denormalize (gộp data)</th></tr>
+  <tr><td>Data</td><td>Không trùng lặp, ACID</td><td>Trùng lặp, nhưng đọc nhanh</td></tr>
+  <tr><td>Query</td><td>Cần JOIN (chậm khi scale)</td><td>1 query lấy hết (nhanh)</td></tr>
+  <tr><td>Dùng cho</td><td>SQL, OLTP, data integrity</td><td>NoSQL, read-heavy, feed</td></tr>
+</table>
+<p>Ví dụ: Instagram lưu <code>post</code> với cả <code>author_name</code> luôn (denormalize) để load feed không cần JOIN với bảng users. Trade-off: user đổi tên → phải update nhiều chỗ.</p>
+
 <h2>🔍 Index - "Mục lục sách"</h2>
 <p>Tìm "Phở" trong sách 1000 trang: lật từng trang mất giờ. Có mục lục → mở phát ra.</p>
 <pre><code>-- Không có index: full table scan 😱
@@ -597,17 +714,49 @@ function getUser(id) {
   <li><strong>TTL</strong>: Hết hạn thì xoá.</li>
 </ul>
 
-<h2>🚨 Cache problems</h2>
-<div class="cards">
-  <div class="card"><div class="emoji">🌨️</div><h4>Thundering herd</h4><p>1000 request cùng miss → đập vào DB.</p></div>
-  <div class="card"><div class="emoji">🎭</div><h4>Stale data</h4><p>Data cũ hơn DB - phải invalidate đúng cách.</p></div>
-  <div class="card"><div class="emoji">💥</div><h4>Cache penetration</h4><p>Query key không tồn tại → luôn miss.</p></div>
-  <div class="card"><div class="emoji">🌋</div><h4>Cache avalanche</h4><p>Nhiều key hết hạn cùng lúc.</p></div>
-</div>
+<h2>🚨 Cache problems — và cách giải</h2>
+
+<h3>🌨️ Thundering Herd — "Bầy đànđập DB"</h3>
+<p><strong>Vấn đề:</strong> Cache hết hạn, 1000 request cùng lúc miss → tất cả đập vào DB.</p>
+<p><strong>Giải pháp:</strong></p>
+<ul>
+  <li><strong>Request coalescing</strong> (Singleflight): 1000 request cùng key → chỉ 1 cái query DB, 999 cái chờ kết quả.</li>
+  <li><strong>Mutex lock</strong>: Request đầu tiên giữ lock, query DB, set cache. Các request khác chờ lock rồi đọc cache.</li>
+</ul>
+<pre><code>// Singleflight pattern
+const inflight = new Map();
+async function getWithCoalesce(key) {
+  if (cache.has(key)) return cache.get(key);
+  if (inflight.has(key)) return inflight.get(key); // chờ cùng promise
+  const p = db.query(key).then(v => { cache.set(key, v); inflight.delete(key); return v; });
+  inflight.set(key, p);
+  return p;
+}</code></pre>
+
+<h3>💥 Cache Penetration — "Hỏi key không tồn tại"</h3>
+<p><strong>Vấn đề:</strong> User (hoặc attacker) query key không hề có trong DB → luôn miss → mỗi lần đều đập DB.</p>
+<p><strong>Giải pháp:</strong></p>
+<ul>
+  <li><strong>Cache null value</strong>: Key không có → cache <code>null</code> với TTL ngắn (30 giây). Lần sau trả null từ cache.</li>
+  <li><strong>Bloom Filter</strong>: Bộ lọc xác suất — check nhanh "key này CÓ THỂ tồn tại không" mà không cần đọc DB. Nếu Bloom nói "không" = chắc chắn không.</li>
+</ul>
+
+<h3>🌋 Cache Avalanche — "Tất cả hết hạn cùng lúc"</h3>
+<p><strong>Vấn đề:</strong> Set 10K key với TTL = 1 giờ. Đúng 1 giờ sau → 10K key hết hạn → 10K request đập DB.</p>
+<p><strong>Giải pháp:</strong></p>
+<ul>
+  <li><strong>Jittered TTL</strong>: Thêm random vào TTL. <code>TTL = 3600 + random(0, 300)</code> → keys hết hạn rải đều.</li>
+  <li><strong>Cache warming</strong>: Khi deploy/restart, load sẵn top 10% hot data vào cache trước khi nhận traffic.</li>
+  <li><strong>Multi-layer cache</strong>: Local cache (in-process) + Redis (shared) → nếu Redis sập, local vẫn còn.</li>
+</ul>
+
+<h3>🎭 Stale Data — "Data cũ như báo hôm qua"</h3>
+<p><strong>Vấn đề:</strong> User update profile nhưng cache vẫn trả data cũ.</p>
+<p><strong>Giải pháp:</strong> Invalidate cache khi write: <code>db.update(user) → redis.del('user:' + id)</code>. Lần đọc kế tiếp sẽ miss và load fresh từ DB.</p>
 
 <div class="callout tip">
 <div class="callout-title">💡 Best practice</div>
-<p>Cache chỉ dữ liệu đọc nhiều, ít đổi (user profile, top sản phẩm). Đừng cache dữ liệu real-time (giá chứng khoán mili giây).</p>
+<p>Cache chỉ dữ liệu đọc nhiều, ít đổi (user profile, top sản phẩm). Đừng cache dữ liệu real-time (giá chứng khoán mili giây). Và <strong>luôn có fallback</strong> khi cache chết — hệ thống phải vẫn chạy (được dù chậm hơn).</p>
 </div>
 `
   },

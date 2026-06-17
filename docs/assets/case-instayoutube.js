@@ -235,6 +235,11 @@ Why watch_time not click? → Click-bait optimization avoided.
 
 Loss: weighted logistic regression on watch_time</code></pre>
 
+<div class="callout tip">
+<div class="callout-title">🤔 Tại sao optimize cho "Watch Time" thay vì "Click"?</div>
+<p>Những năm đầu, YouTube optimize ranking cho số lượt click. Kết quả? <strong>Đại dịch Clickbait</strong>: thumbnail sốc, tiêu đề lừa đảo, người dùng click vào xem 5 giây rồi thoát. Trải nghiệm tệ, quảng cáo không ai xem. Khi họ đổi thuật toán sang tối ưu <strong>Watch Time (tổng thời gian xem)</strong>, clickbait chết ngay lập tức vì video dở không giữ chân người dùng được. Bài học: metric bạn chọn để tối ưu sẽ quyết định hành vi của toàn bộ ecosystem.</p>
+</div>
+
 <h3>💬 Comment System (1M+ comments on viral video)</h3>
 
 <pre><code>Schema (Spanner / Bigtable):

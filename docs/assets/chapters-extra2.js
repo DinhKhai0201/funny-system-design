@@ -201,6 +201,25 @@ X-RateLimit-Reset: 1715600000
 <div class="callout-title">😎 Cool fact</div>
 <p>GitHub API rate limit: 5000 request/giờ cho authenticated user, chỉ 60 cho anonymous. Mỗi response đều có header <code>X-RateLimit-Remaining</code> để client biết còn bao nhiêu.</p>
 </div>
+
+<h2>🌐 Distributed Rate Limiting</h2>
+<p>Vấn đề: bạn có 10 app server, mỗi server đếm riêng → user gửi 10 req vào 10 server = 100 req nhưng mỗi server chỉ thấy 10.</p>
+<p><strong>Giải pháp:</strong> Dùng <strong>Redis</strong> làm central counter:</p>
+<pre><code>// Redis-based sliding window
+async function isAllowed(userId) {
+  const key = \`rate:\${userId}:\${Math.floor(Date.now()/60000)}\`;
+  const count = await redis.incr(key);
+  if (count === 1) await redis.expire(key, 60);
+  return count <= 100; // 100 req/phút
+}</code></pre>
+<p>Trade-off: Redis thêm ~1ms latency mỗi request. Có thể dùng <strong>local counter + sync định kỳ</strong> nếu chấp nhận sai số nhỏ.</p>
+
+<h2>🏚️ Graceful Degradation khi bị limit</h2>
+<ul>
+  <li><strong>Priority queue</strong>: User trả tiền có rate limit cao hơn free user.</li>
+  <li><strong>Retry-After header</strong>: Client biết chờ bao lâu, không spam thêm.</li>
+  <li><strong>Fallback content</strong>: Thay vì trả 429, trả cached/stale data (read-only mode).</li>
+</ul>
 `
   },
 
@@ -419,6 +438,19 @@ app.get('/metrics', (req, res) => res.send(promClient.register.metrics()));</cod
   <li><strong>SLA</strong> (Agreement): cam kết với khách (99.95%, không thì bồi thường).</li>
 </ul>
 <p>99.9% uptime = 8.76 giờ downtime/năm. 99.99% = 52 phút/năm. 99.999% = 5 phút - "five nines".</p>
+
+<h3>💰 Error Budget — "Ngân sách lỗi"</h3>
+<p>Nếu SLO = 99.9% thì bạn có <strong>0.1% error budget</strong>. Tức là được phép hỏng 8.76 giờ/năm. Cách dùng:</p>
+<ul>
+  <li>Còn budget → ship nhanh, deploy liên tục, thử nghiệm mạnh dạn.</li>
+  <li>Hết budget → freeze feature, chỉ fix reliability.</li>
+  <li>Team SRE và Product cùng share error budget → align được velocity vs stability.</li>
+</ul>
+
+<div class="callout fun">
+<div class="callout-title">😎 Google SRE</div>
+<p>Google phát minh khái niệm Error Budget. Nếu service quá stable (0 error), SRE sẽ <strong>cố tình inject lỗi</strong> để test hệ thống. Vì hệ thống chưa bao giờ lỗi = chưa bao giờ được test!</p>
+</div>
 `
   },
 
@@ -836,6 +868,45 @@ Failover: DNS đổi điểm về US, promote DB replica thành master</code></p
 <div class="callout-title">⚠️ Câu chuyện thật</div>
 <p>2017: GitLab DBA xoá nhầm DB production. Phát hiện 5/6 backup không hoạt động. May còn 1 cái cũ 6 tiếng. Mất 6h data. Bài học: <strong>test backup thường xuyên</strong>.</p>
 </div>
+
+<h2>📝 WAL — Write-Ahead Log</h2>
+<p>Mọi DB nghiêm túc đều dùng WAL: <strong>ghi log trước, ghi data sau</strong>. Nếu crash giữa chừng, replay log để khôi phục.</p>
+<pre><code>Quy trình ghi 1 record:
+1. Ghi vào WAL (append-only, sequential → nhanh)  ✅
+2. Ghi vào data page (có thể chậm)              ✅
+3. Flush WAL định kỳ
+
+Nếu crash sau bước 1 nhưng trước bước 2:
+→ Restart → replay WAL → data không mất
+
+Point-in-time recovery:
+  Base backup (full) + replay WAL từ đó đến 14:30 ngày hôm qua
+  → Khôi phục về đúng trạng thái 14:30</code></pre>
+
+<h2>🔄 Failover Process chi tiết</h2>
+<p>Master DB chết. Chuyện gì xảy ra?</p>
+<ol>
+  <li><strong>Health check fail</strong>: LB/monitor phát hiện master không trả lời (3 lần liên tiếp, mỗi lần 10s).</li>
+  <li><strong>Promote replica</strong>: Chọn replica có data mới nhất → promote thành master mới.</li>
+  <li><strong>Update DNS/config</strong>: Trỏ connection string về master mới.</li>
+  <li><strong>Notify</strong>: Alert on-call engineer, log event.</li>
+  <li><strong>Rebuild replica</strong>: Tạo replica mới từ master mới để khôi phục số lượng replica.</li>
+</ol>
+
+<div class="callout warn">
+<div class="callout-title">⚠️ Split-brain</div>
+<p>Nếu master cũ chưa thực sự chết (chỉ mạng chậm)? Có thể có <strong>2 master cùng lúc</strong> → data conflict! Giải pháp: dùng <strong>fencing token</strong> — master cũ bị "thuê bao kế" không ghi được nữa.</p>
+</div>
+
+<h2>🚀 Blue-Green & Canary Deployment</h2>
+<p>Không liên quan backup nhưng liên quan HA:</p>
+<table>
+  <tr><th></th><th>Blue-Green</th><th>Canary</th></tr>
+  <tr><td>Ý tưởng</td><td>2 môi trường giống hệt. Switch traffic 100%</td><td>Giao 5% traffic cho version mới, tăng dần</td></tr>
+  <tr><td>Rollback</td><td>Switch lại tức thì</td><td>Dừng canary, 100% về cũ</td></tr>
+  <tr><td>Risk</td><td>Nếu bug, 100% user đảnh</td><td>Chỉ 5% user đảnh, phát hiện sớm</td></tr>
+  <tr><td>Cost</td><td>Gấp đôi infra</td><td>Thêm ít infra</td></tr>
+</table>
 `
   },
 

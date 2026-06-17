@@ -151,6 +151,16 @@ assoc_get(X, "tagged_in")</code></pre>
 <li>Write: write to master → invalidate cache → async replicate.</li>
 </ul>
 
+<div class="callout tip">
+<div class="callout-title">💡 Key insight</div>
+<p>TAO được thiết kế cho "get all edges of a node" - pattern phổ biến nhất. Nó dùng MySQL sharding đã proven, không dùng graph DB phức tạp.</p>
+</div>
+
+<div class="
+<div class="callout-title">🤔 Tại sao Facebook tự build TAO?</div>
+<p>Tại sao không dùng Neo4j hay dgraph? Vì <strong>access pattern đặc thù</strong>: 99% query là "lấy danh sách edge của 1 node" (friend list, liked posts) — không cần graph traversal phức tạp. TAO tối ưu cho pattern này bằng cách <strong>cache trực tiếp association list</strong> trong Memcache, đạt 99% hit rate. Neo4j không scale horizontal, còn TAO dựa trên MySQL sharding đã proven ở FB. Bài học: đôi khi <strong>simple model + caching &gt; fancy database</strong>.</p>
+</div>
+
 <h2>🎯 Bước 5: Newsfeed Ranking Pipeline</h2>
 
 <h3>4 Stage Pipeline</h3>

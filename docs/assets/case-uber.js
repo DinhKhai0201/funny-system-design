@@ -226,6 +226,18 @@ Downstream consumers:
   - Analytics (Hudi data lake)
   - ETA recalculation</code></pre>
 
+<p>Không thể dùng Redis hay MySQL bình thường vì query <em>"tìm tài xế trong bán kính 3km"</em> rất tốn kém (phải tính khoảng cách mọi tài xế). Cần database chuyên dụng:</p>
+<ul>
+<li><strong>QuadTree / Geohash</strong>: chia bản đồ thành lưới.</li>
+<li><strong>S2 Geometry (Google)</strong> / <strong>H3 (Uber)</strong>: chia bản đồ thành hình lục giác.</li>
+<li>Uber dùng Redis với Geo commands hoặc custom in-memory store (Ringpop).</li>
+</ul>
+
+<div class="callout tip">
+<div class="callout-title">🤔 Tại sao dùng H3 (lục giác) thay vì Geohash (vuông)?</div>
+<p>Hình vuông (Geohash) có vấn đề: khoảng cách từ tâm đến 4 góc xa hơn khoảng cách từ tâm đến 4 cạnh. Điều này làm thuật toán tìm kiếm hàng xóm (neighbor) bị sai lệch khoảng cách. Hình lục giác (H3) có khoảng cách từ tâm đến tâm của mọi hàng xóm là <strong>bằng nhau</strong>, giúp việc tính giá (surge pricing) và tìm xe xung quanh chính xác và mượt mà hơn rất nhiều.</p>
+</div>
+
 <h3>Sharding strategy</h3>
 <p>Uber dùng <strong>Ringpop</strong> - tự build consistent hashing library:</p>
 <ul>
@@ -270,6 +282,11 @@ Cost function (simplified):
 <li>Heuristic: route similarity score, detour limit (max +20% time).</li>
 <li>Solve iteratively.</li>
 </ul>
+
+<div class="callout warn">
+<div class="callout-title">🤔 Tại sao Dispatch Service phải Stateful?</div>
+<p>Ở chương 8 ta học "luôn làm server stateless". Nhưng Dispatch là ngoại lệ! Quá trình "hỏi tài xế A → chờ 10s → nếu từ chối, hỏi B" là một <strong>long-running state machine</strong>. Nếu Dispatch lưu state vào DB mỗi giây, DB sẽ quá tải (write-heavy). Thay vào đó, nó giữ state trên RAM, dùng actor model (mỗi chuyến xe là 1 actor) và Ringpop để share state trong cluster. Khi server chết, state của chuyến đi sẽ tự động di chuyển sang server khác.</p>
+</div>
 
 <h2>💰 Bước 7: Surge Pricing</h2>
 

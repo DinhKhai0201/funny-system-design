@@ -227,6 +227,11 @@ TTL: expires_at - tự xoá khi hết hạn</code></pre>
 
 <p><strong>Tại sao NoSQL?</strong> Không cần JOIN, query chính là <code>GET by short_code</code> - perfect cho key-value store. Scale ngang dễ.</p>
 
+<div class="callout tip">
+<div class="callout-title">🤔 Tại sao không dùng SQL luôn?</div>
+<p>SQL (PostgreSQL) hoàn toàn được cho 200 write/s — chưa cần NoSQL đâu! Nhưng khi <strong>lên 100K write/s + 15TB data</strong>, SQL gặp vấn đề: sharding phức tạp (manual), auto-delete theo TTL không native. DynamoDB có sẵn partition + TTL auto-delete + global table. <strong>Senior answer</strong>: "Bắt đầu với PostgreSQL, chuyển DynamoDB khi scale cần."</p>
+</div>
+
 <h2>🔌 Bước 6: API Design</h2>
 
 <pre><code>POST /api/v1/shorten
@@ -265,6 +270,11 @@ GET /:short_code
 <tr><td>Analytics</td><td>Không track được click lặp</td><td>Track được mọi click</td></tr>
 </table>
 <p>👉 Bit.ly chọn <strong>301</strong> cho SEO. Nếu cần analytics chính xác → dùng <strong>302</strong>.</p>
+
+<div class="callout fun">
+<div class="callout-title">🤔 Tại sao Snowflake mà không dùng hash?</div>
+<p>Hash (MD5/SHA) đơn giản nhưng có <strong>birthday paradox</strong>: với 1 tỉ URL, xác suất collision là đáng kể — phải check DB mỗi lần. Snowflake đảm bảo <strong>zero collision by design</strong> (mỗi server có machine ID riêng), time-sortable (để debug), và không cần coordinate giữa các server. Trade-off: ID dài hơn (7-8 ký tự thay vì có thể ngắn hơn).</p>
+</div>
 
 <h2>🔄 Bước 7: Flow chi tiết</h2>
 

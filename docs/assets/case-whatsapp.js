@@ -139,6 +139,11 @@ Bandwidth:
 <li>BEAM VM optimized for concurrent IO.</li>
 </ul>
 
+<div class="callout tip">
+<div class="callout-title">🤔 Tại sao WhatsApp chọn Erlang mà không phải Java/C++?</div>
+<p>Bài toán chat là bài toán <strong>I/O bound, không phải CPU bound</strong>. Server chat chủ yếu ngồi chờ tin nhắn và đẩy tin nhắn đi qua hàng triệu connection (C10M problem). Erlang được thiết kế từ thập niên 80 cho <strong>hệ thống viễn thông</strong> (telephone switch) với kiến trúc Actor Model: mỗi connection là 1 process độc lập, siêu nhẹ (2KB RAM). Nếu 1 process crash, nó không kéo sập cả server. 32 engineer WhatsApp quản lý 450M user nhờ sự ổn định tuyệt đối của Erlang.</p>
+</div>
+
 <h2>📩 Bước 5: Message Delivery Flow</h2>
 
 <h3>Single chat (A → B)</h3>
@@ -394,6 +399,11 @@ After 5s no event → assume stopped</code></pre>
 <li>Storage cost: 100B msg/day × 365 = 36 trillion msg/year. Untenable.</li>
 <li>Backup is user's responsibility (iCloud, Google Drive).</li>
 </ol>
+
+<div class="callout tip">
+<div class="callout-title">🤔 Tại sao xóa message khỏi server là quyết định thiên tài?</div>
+<p>Hầu hết các app chat (Messenger, Telegram) lưu toàn bộ lịch sử chat trên server mãi mãi → cost lưu trữ khổng lồ + nguy cơ lộ data. Bằng cách <strong>xóa tin nhắn ngay khi nhận được ACK (delivered)</strong>, server WhatsApp trở thành <strong>stateless router</strong>. Họ không tốn tiền mua Petabyte ổ cứng, không lo bị hacker trộm data (vì làm gì có data mà trộm). Mọi logic tìm kiếm, lưu trữ đều đẩy về phía client (điện thoại của bạn). Đổi lại, nếu bạn mất điện thoại mà chưa backup iCloud → mất sạch tin nhắn.</p>
+</div>
 
 <h3>Backup to iCloud/Google Drive</h3>
 <ul>
