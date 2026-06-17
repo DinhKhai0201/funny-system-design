@@ -249,7 +249,7 @@ th { background: var(--border); font-weight: 700; }
 @media (max-width: 900px) {
   .layout { grid-template-columns: 1fr; }
   .sidebar {
-    position: fixed; left: -300px; top: 105px; height: calc(100vh - 105px); width: 280px;
+    position: fixed; left: -300px; top: 88px; height: calc(100vh - 88px); width: 280px;
     z-index: 90; transition: left 0.25s;
   }
   .sidebar.open { left: 0; }
@@ -258,16 +258,16 @@ th { background: var(--border); font-weight: 700; }
   
   /* Topbar Mobile */
   .topbar { background: var(--bg-soft); border-bottom: 1px solid var(--border); box-shadow: none; }
-  .topbar-inner { padding: 12px 16px; flex-wrap: wrap; gap: 12px; }
+  .topbar-inner { padding: 8px 12px; flex-wrap: wrap; gap: 8px; }
   .brand { color: var(--text); }
-  .logo { font-size: 22px; }
-  .brand-title { font-size: 16px; font-weight: 700; }
+  .logo { font-size: 20px; }
+  .brand-title { font-size: 15px; font-weight: 700; }
   .brand-sub { display: none; }
   
   .top-actions { width: 100%; display: flex; gap: 8px; justify-content: space-between; }
-  #searchBox { flex: 1; width: auto; background: var(--bg); color: var(--text); border: 1px solid var(--border); }
+  #searchBox { flex: 1; width: auto; padding: 7px 12px; font-size: 13px; background: var(--bg); color: var(--text); border: 1px solid var(--border); }
   #searchBox::placeholder { color: var(--text-soft); }
-  #themeToggle { background: var(--bg); color: var(--text); border: 1px solid var(--border); }
+  #themeToggle { background: var(--bg); color: var(--text); border: 1px solid var(--border); width: 34px; height: 34px; font-size: 16px; }
 
   /* Pagination Mobile */
   .pagination { padding: 12px; gap: 8px; flex-wrap: wrap; justify-content: space-between; background: transparent; box-shadow: none; border: none; }
